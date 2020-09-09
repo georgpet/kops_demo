@@ -1,0 +1,21 @@
+---
+# https://istio.io/docs/reference/config/networking/virtual-service/#HTTPMatchRequest
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hello-world-virtual-service
+spec:
+  gateways:
+    - istio-system/ingressgateway
+  hosts:
+    - '*'
+  http:
+    - match:
+        - uri:
+            prefix: /hello
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: hello-world
+

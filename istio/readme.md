@@ -2,6 +2,9 @@
 
 ```shell script
 istioctl manifest apply -f spot/istio-operator.yaml
+
+kubectl label namespace default istio-injection=enabled
+
 ```
 
 # Enable Kubernetes third party JWT authentication
