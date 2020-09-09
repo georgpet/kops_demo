@@ -1,0 +1,136 @@
+apiVersion: kops.k8s.io/v1alpha2
+kind: Cluster
+metadata:
+  creationTimestamp: null
+  name: {{.clusterName}}
+spec:
+  api:
+    loadBalancer:
+      type: Public
+  authorization:
+    rbac: {}
+  channel: stable
+  cloudProvider: aws
+  configBase: {{.stateStore}}/{{.clusterName}}
+  etcdClusters:
+  - cpuRequest: 200m
+    etcdMembers:
+    - instanceGroup: master-{{.awsRegion}}a
+      name: a
+    memoryRequest: 100Mi
+    name: main
+  - cpuRequest: 100m
+    etcdMembers:
+    - instanceGroup: master-{{.awsRegion}}a
+      name: a
+    memoryRequest: 100Mi
+    name: events
+  iam:
+    allowContainerRegistry: true    
+    legacy: false
+  kubelet:
+    anonymousAuth: false
+    authenticationTokenWebhook: true
+    authorizationMode: Webhook
+  # https://kops.sigs.k8s.io/operations/service_account_token_volumes/
+  kubeAPIServer:
+    apiAudiences:
+      - api
+      - istio-ca
+    serviceAccountIssuer: kubernetes.default.svc
+    serviceAccountKeyFile:
+      - /srv/kubernetes/server.key
+    serviceAccountSigningKeyFile: /srv/kubernetes/server.key
+  kubernetesApiAccess:
+  - 0.0.0.0/0
+  kubernetesVersion: 1.17.9
+  masterInternalName: api.internal.kops-demo.lab-aws.monetplus.cz
+  masterPublicName: api.kops-demo.lab-aws.monetplus.cz
+  networkCIDR: 172.20.0.0/16
+  networking:
+    kubenet: {}
+  nonMasqueradeCIDR: 100.64.0.0/10
+  sshAccess:
+  - 0.0.0.0/0
+  subnets:
+  - cidr: 172.20.32.0/19
+    name: {{.awsRegion}}a
+    type: Public
+    zone: {{.awsRegion}}a
+  - cidr: 172.20.64.0/19
+    name: {{.awsRegion}}b
+    type: Public
+    zone: {{.awsRegion}}b
+  - cidr: 172.20.96.0/19
+    name: {{.awsRegion}}c
+    type: Public
+    zone: {{.awsRegion}}c
+  topology:
+    dns:
+      type: Public
+    masters: public
+    nodes: public
+  # https://kops.sigs.k8s.io/iam_roles/
+  additionalPolicies:
+    node: |
+      [
+        {
+          "Effect": "Allow",
+          "Action": "route53:ChangeResourceRecordSets",
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "route53:ListHostedZones",
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "route53:ListResourceRecordSets",
+          "Resource": "*"
+        }
+      ]
+
+apiVersion: kops.k8s.io/v1alpha2
+kind: InstanceGroup
+metadata:
+  creationTimestamp: null
+  labels:
+    kops.k8s.io/cluster: {{.clusterName}}
+  name: master-{{.awsRegion}}a
+spec:
+  image: {{ .kubernetesNodeImage }}
+  machineType: {{ .masterInstance }}
+  maxSize: {{ .masterCount }}
+  minSize: {{ .masterCount }}
+  maxPrice: {{ .masterMaxPrice | quote }}
+  nodeLabels:
+    kops.k8s.io/instancegroup: master-{{.awsRegion}}a
+  role: Master
+  rootVolumeSize: {{ .masterVolumeSize }}
+  subnets:
+    - {{.awsRegion}}a
+
+---
+
+apiVersion: kops.k8s.io/v1alpha2
+kind: InstanceGroup
+metadata:
+  creationTimestamp: null
+  labels:
+    kops.k8s.io/cluster: {{.clusterName}}
+  name: nodes
+spec:
+  image: {{ .kubernetesNodeImage }}
+  machineType: {{ .nodeInstance }}
+  maxSize: {{ .nodeCount }}
+  minSize: {{ .nodeCount }}
+  maxPrice: {{ .nodeMaxPrice | quote }}
+  nodeLabels:
+    kops.k8s.io/instancegroup: nodes
+  role: Node
+  rootVolumeSize: {{ .nodeVolumeSize }}
+  subnets:
+    - {{.awsRegion}}a
+    - {{.awsRegion}}b
+    - {{.awsRegion}}c
