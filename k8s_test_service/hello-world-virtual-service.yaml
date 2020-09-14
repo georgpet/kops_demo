@@ -6,7 +6,7 @@ metadata:
   name: hello-world-virtual-service
 spec:
   gateways:
-    - istio-system/ingressgateway
+    - ingressgateway
   hosts:
     - '*'
   http:
@@ -19,5 +19,5 @@ spec:
         - destination:
             host: hello-world
             port:
-              number: 30081
+              number: 80
 
